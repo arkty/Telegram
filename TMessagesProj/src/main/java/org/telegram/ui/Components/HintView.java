@@ -141,6 +141,9 @@ public class HintView extends FrameLayout {
         return translationY;
     }
 
+    public boolean showForActionBarItem() {
+        return true;
+    }
     public boolean showForMessageCell(ChatMessageCell cell, boolean animated) {
         return showForMessageCell(cell, null, 0, 0, animated);
     }

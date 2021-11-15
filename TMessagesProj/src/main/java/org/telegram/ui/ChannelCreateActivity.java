@@ -57,6 +57,7 @@ import org.telegram.ui.Cells.LoadingCell;
 import org.telegram.ui.Cells.RadioButtonCell;
 import org.telegram.ui.Cells.ShadowSectionCell;
 import org.telegram.ui.Cells.TextBlockCell;
+import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Components.AvatarDrawable;
 import org.telegram.ui.Components.EditTextEmoji;
@@ -107,6 +108,15 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
     private TextView helpTextView;
     private TextView checkTextView;
     private HeaderCell headerCell;
+
+    private HeaderCell headerCell3;
+
+    private HeaderCell restrictSavingContentHeaderCell;
+    private LinearLayout restrictSavingContentContainer;
+    private TextInfoPrivacyCell restrictSavingContentInfoCell;
+    private TextCheckCell restrictSavingContentCheckCell;
+    private boolean restrictSavingContent;
+
     private int checkReqId;
     private String lastCheckName;
     private Runnable checkRunnable;
@@ -664,7 +674,10 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             linearLayout.addView(linkContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
             headerCell = new HeaderCell(context);
-            linkContainer.addView(headerCell);
+            //linkContainer.addView(headerCell);
+
+            headerCell3 = new HeaderCell(context);
+            linkContainer.addView(headerCell3);
 
             publicContainer = new LinearLayout(context);
             publicContainer.setOrientation(LinearLayout.HORIZONTAL);
@@ -750,6 +763,28 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             adminedInfoCell.setBackgroundDrawable(Theme.getThemedDrawable(context, R.drawable.greydivider_bottom, Theme.key_windowBackgroundGrayShadow));
             linearLayout.addView(adminedInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
+            restrictSavingContentContainer = new LinearLayout(context);
+            restrictSavingContentContainer.setOrientation(LinearLayout.VERTICAL);
+            restrictSavingContentContainer.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+            linearLayout.addView(restrictSavingContentContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+            restrictSavingContentHeaderCell = new HeaderCell(context, 23);
+            restrictSavingContentHeaderCell.setText("Saving content");
+            restrictSavingContentContainer.addView(restrictSavingContentHeaderCell);
+
+            restrictSavingContentCheckCell = new TextCheckCell(context);
+            restrictSavingContent = false;
+            restrictSavingContentCheckCell.setTextAndCheck("Restrict saving content", restrictSavingContent, false);
+            restrictSavingContentCheckCell.setOnClickListener(v -> {
+                restrictSavingContent = !restrictSavingContent;
+                restrictSavingContentCheckCell.setChecked(restrictSavingContent);
+                getMessagesController().toggleNoForwards(-chatId, restrictSavingContent);
+            });
+            restrictSavingContentContainer.addView(restrictSavingContentCheckCell);
+
+            restrictSavingContentInfoCell = new TextInfoPrivacyCell(context);
+            restrictSavingContentInfoCell.setText("Participants won’t be able to forward messages from this group or save media files.");
+            linearLayout.addView(restrictSavingContentInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
             updatePrivatePublic();
         }
 
@@ -814,13 +849,14 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
             linkContainer.setVisibility(View.VISIBLE);
             loadingAdminedCell.setVisibility(View.GONE);
             typeInfoCell.setText(isPrivate ? LocaleController.getString("ChannelPrivateLinkHelp", R.string.ChannelPrivateLinkHelp) : LocaleController.getString("ChannelUsernameHelp", R.string.ChannelUsernameHelp));
-            headerCell.setText(isPrivate ? LocaleController.getString("ChannelInviteLinkTitle", R.string.ChannelInviteLinkTitle) : LocaleController.getString("ChannelLinkTitle", R.string.ChannelLinkTitle));
             publicContainer.setVisibility(isPrivate ? View.GONE : View.VISIBLE);
             privateContainer.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
             linkContainer.setPadding(0, 0, 0, isPrivate ? 0 : AndroidUtilities.dp(7));
             permanentLinkView.setLink(invite != null ? invite.link : null);
             checkTextView.setVisibility(!isPrivate && checkTextView.length() != 0 ? View.VISIBLE : View.GONE);
         }
+        restrictSavingContentInfoCell.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
+        restrictSavingContentContainer.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
         radioButtonCell1.setChecked(!isPrivate, true);
         radioButtonCell2.setChecked(isPrivate, true);
         descriptionTextView.clearFocus();
@@ -1220,6 +1256,7 @@ public class ChannelCreateActivity extends BaseFragment implements NotificationC
         themeDescriptions.add(new ThemeDescription(sectionCell, ThemeDescription.FLAG_BACKGROUNDFILTER, null, null, null, null, Theme.key_windowBackgroundGrayShadow));
         themeDescriptions.add(new ThemeDescription(headerCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(headerCell2, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
+        themeDescriptions.add(new ThemeDescription(headerCell3, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_HINTTEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteHintText));
         themeDescriptions.add(new ThemeDescription(checkTextView, ThemeDescription.FLAG_TEXTCOLOR | ThemeDescription.FLAG_CHECKTAG, null, null, null, null, Theme.key_windowBackgroundWhiteRedText4));

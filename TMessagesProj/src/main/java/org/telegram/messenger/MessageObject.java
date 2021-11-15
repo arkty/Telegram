@@ -24,6 +24,7 @@ import android.text.style.ClickableSpan;
 import android.text.style.URLSpan;
 import android.text.util.Linkify;
 import android.util.Base64;
+import android.util.Log;
 
 import org.telegram.PhoneFormat.PhoneFormat;
 import org.telegram.messenger.browser.Browser;
@@ -1528,6 +1529,13 @@ public class MessageObject {
                 messageText = replaceWithLink(LocaleController.getString("EventLogToggledSignaturesOn", R.string.EventLogToggledSignaturesOn), "un1", fromUser);
             } else {
                 messageText = replaceWithLink(LocaleController.getString("EventLogToggledSignaturesOff", R.string.EventLogToggledSignaturesOff), "un1", fromUser);
+            }
+        }
+        else if(event.action instanceof  TLRPC.TL_channelAdminLogEventActionToggleNoForwards) {
+            if (((TLRPC.TL_channelAdminLogEventActionToggleNoForwards) event.action).new_value) {
+                messageText = replaceWithLink(LocaleController.getString("EventLogToggledNoForwardsOn", R.string.EventLogToggledNoForwardsOn), "un1", fromUser);
+            } else {
+                messageText = replaceWithLink(LocaleController.getString("EventLogToggledNoForwardsOff", R.string.EventLogToggledNoForwardsOff), "un1", fromUser);
             }
         } else if (event.action instanceof TLRPC.TL_channelAdminLogEventActionToggleInvites) {
             if (((TLRPC.TL_channelAdminLogEventActionToggleInvites) event.action).new_value) {

@@ -8,6 +8,8 @@
 
 package org.telegram.ui.Components;
 
+import static java.time.temporal.ChronoUnit.DAYS;
+
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -42,6 +44,7 @@ import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.style.URLSpan;
 import android.util.Base64;
+import android.util.Log;
 import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -108,6 +111,8 @@ import org.telegram.ui.ThemePreviewActivity;
 import org.telegram.ui.TooManyCommunitiesActivity;
 
 import java.net.IDN;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -3969,6 +3974,74 @@ public class AlertsCreator {
 
     public interface PaymentAlertDelegate {
         void didPressedNewCard();
+    }
+
+    public static void createDeleteMessagesRangeAlert(BaseFragment fragment, Long dialogId, LocalDate start, LocalDate end, Runnable onDelete, Theme.ResourcesProvider resourcesProvider) {
+        Log.v("Contest_3", "delete: " + dialogId + ", " + start + ", " + end);
+        if (fragment == null || dialogId < 0 || start == null) {
+            return;
+        }
+        Activity activity = fragment.getParentActivity();
+        if (activity == null) {
+            return;
+        }
+
+        long opponentId;
+        if (DialogObject.isEncryptedDialog(dialogId)) {
+            opponentId = fragment.getMessagesController().getEncryptedChat(DialogObject.getEncryptedChatId(dialogId)).user_id;
+        } else if (DialogObject.isUserDialog(dialogId)) {
+            opponentId = fragment.getMessagesController().getUser(dialogId).id;
+        } else {
+            return;
+        }
+        TLRPC.User user = fragment.getMessagesController().getUser(opponentId);
+        AlertDialog.Builder builder = new AlertDialog.Builder(activity, resourcesProvider);
+        final boolean[] alsoDeleteFor = {false};
+
+        FrameLayout frameLayout = new FrameLayout(activity);
+        CheckBoxCell cell = new CheckBoxCell(activity, 1, resourcesProvider);
+        cell.setPadding(LocaleController.isRTL ? AndroidUtilities.dp(16) : AndroidUtilities.dp(8), 0, LocaleController.isRTL ? AndroidUtilities.dp(8) : AndroidUtilities.dp(16), 0);
+        cell.setText(LocaleController.formatString("DeleteMessagesOptionAlso", R.string.DeleteMessagesOptionAlso,
+                UserObject.getFirstName(user)),
+                "", false, false);
+        frameLayout.addView(cell, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, 48, Gravity.TOP | Gravity.LEFT, 0, 0, 0, 0));
+        cell.setOnClickListener(v -> {
+            CheckBoxCell cell1 = (CheckBoxCell) v;
+            alsoDeleteFor[0] = !alsoDeleteFor[0];
+            cell1.setChecked(alsoDeleteFor[0], false);
+        });
+        builder.setView(frameLayout);
+        builder.setCustomViewOffset(9);
+
+        builder.setPositiveButton(LocaleController.getString("Delete", R.string.Delete), (dialogInterface, i) -> {
+            long startDate = start.atStartOfDay(ZoneId.systemDefault()).toEpochSecond();
+            long endDate;
+            if(end != null) {
+                endDate = end.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toEpochSecond();
+            } else {
+                endDate = start.atTime(23, 59, 59).atZone(ZoneId.systemDefault()).toEpochSecond();;
+            }
+            Log.v("Contest_3", "delete: " + startDate + ", " + endDate);
+            MessagesController.getInstance(fragment.getCurrentAccount())
+                    .deleteMessagesRange(dialogId, (int) startDate, (int) endDate, alsoDeleteFor[0]);
+            if (onDelete != null) {
+                onDelete.run();
+            }
+        });
+
+        builder.setTitle(LocaleController.formatString("DeleteMessages", R.string.DeleteMessages));
+        String daysTitle = LocaleController.formatPluralString("SelectedDays", (int) DAYS.between(
+                start, end != null ? end : start
+        ) + 1);
+        builder.setMessage(AndroidUtilities.replaceTags(LocaleController.formatString("AreYouSureDeleteRangeMessages", R.string.AreYouSureDeleteRangeMessages, daysTitle)));
+
+        builder.setNegativeButton(LocaleController.getString("Cancel", R.string.Cancel), null);
+        AlertDialog dialog = builder.create();
+        fragment.showDialog(dialog);
+        TextView button = (TextView) dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+        if (button != null) {
+            button.setTextColor(Theme.getColor(Theme.key_dialogTextRed2));
+        }
     }
 
     public static void createDeleteMessagesAlert(BaseFragment fragment, TLRPC.User user, TLRPC.Chat chat, TLRPC.EncryptedChat encryptedChat, TLRPC.ChatFull chatInfo, long mergeDialogId, MessageObject selectedMessage, SparseArray<MessageObject>[] selectedMessages, MessageObject.GroupedMessages selectedGroup, boolean scheduled, int loadParticipant, Runnable onDelete, Theme.ResourcesProvider resourcesProvider) {

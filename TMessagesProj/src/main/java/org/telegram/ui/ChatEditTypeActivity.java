@@ -43,6 +43,7 @@ import org.telegram.ui.Cells.LoadingCell;
 import org.telegram.ui.Cells.RadioButtonCell;
 import org.telegram.ui.Cells.ShadowSectionCell;
 import org.telegram.ui.Cells.TextCell;
+import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Cells.TextInfoPrivacyCell;
 import org.telegram.ui.Cells.TextSettingsCell;
 import org.telegram.ui.Components.EditTextBoldCursor;
@@ -80,6 +81,12 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
     private TextInfoPrivacyCell infoCell;
     private TextSettingsCell textCell;
     private TextSettingsCell textCell2;
+
+    private HeaderCell restrictSavingContentHeaderCell;
+    private LinearLayout restrictSavingContentContainer;
+    private TextInfoPrivacyCell restrictSavingContentInfoCell;
+    private TextCheckCell restrictSavingContentCheckCell;
+    private boolean restrictSavingContent;
 
     private boolean isPrivate;
 
@@ -405,6 +412,36 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
             usernameTextView.setSelection(currentChat.username.length());
             ignoreTextChanges = false;
         }
+
+        restrictSavingContentContainer = new LinearLayout(context);
+        restrictSavingContentContainer.setOrientation(LinearLayout.VERTICAL);
+        restrictSavingContentContainer.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundWhite));
+        linearLayout.addView(restrictSavingContentContainer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        // TODO change strings
+        restrictSavingContentHeaderCell = new HeaderCell(context, 23);
+        restrictSavingContentHeaderCell.setText("Saving content");
+        restrictSavingContentContainer.addView(restrictSavingContentHeaderCell);
+
+        restrictSavingContentCheckCell = new TextCheckCell(context);
+
+        if (currentChat != null) {
+            restrictSavingContent = currentChat.noforwards;
+        } else {
+            restrictSavingContent = false;
+        }
+        restrictSavingContentCheckCell.setTextAndCheck("Restrict saving content", restrictSavingContent, false);
+        restrictSavingContentCheckCell.setOnClickListener(v -> {
+            restrictSavingContent = !restrictSavingContent;
+            restrictSavingContentCheckCell.setChecked(restrictSavingContent);
+            getMessagesController().toggleNoForwards(-chatId, restrictSavingContent);
+        });
+        restrictSavingContentContainer.addView(restrictSavingContentCheckCell);
+
+        restrictSavingContentInfoCell = new TextInfoPrivacyCell(context);
+        restrictSavingContentInfoCell.setText("Participants won’t be able to forward messages from this group or save media files.");
+        linearLayout.addView(restrictSavingContentInfoCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
         updatePrivatePublic();
 
         return fragmentView;
@@ -594,6 +631,8 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
         radioButtonCell1.setChecked(!isPrivate, true);
         radioButtonCell2.setChecked(isPrivate, true);
         usernameTextView.clearFocus();
+        restrictSavingContentInfoCell.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
+        restrictSavingContentContainer.setVisibility(isPrivate ? View.VISIBLE : View.GONE);
         checkDoneButton();
     }
 
@@ -769,6 +808,8 @@ public class ChatEditTypeActivity extends BaseFragment implements NotificationCe
         themeDescriptions.add(new ThemeDescription(linkContainer, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_windowBackgroundWhite));
         themeDescriptions.add(new ThemeDescription(headerCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(headerCell2, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
+        // TODO add themes
+        themeDescriptions.add(new ThemeDescription(restrictSavingContentHeaderCell, 0, new Class[]{HeaderCell.class}, new String[]{"textView"}, null, null, null, Theme.key_windowBackgroundWhiteBlueHeader));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_TEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteBlackText));
         themeDescriptions.add(new ThemeDescription(editText, ThemeDescription.FLAG_HINTTEXTCOLOR, null, null, null, null, Theme.key_windowBackgroundWhiteHintText));
 

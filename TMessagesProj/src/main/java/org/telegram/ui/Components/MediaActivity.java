@@ -42,6 +42,8 @@ public class MediaActivity extends BaseFragment implements SharedMediaLayout.Sha
 
     private SharedMediaLayout.SharedMediaPreloader sharedMediaPreloader;
     private TLRPC.ChatFull currentChatInfo;
+    private TLRPC.Chat currentChat;
+
     private long dialogId;
     private SimpleTextView nameTextView;
     ProfileActivity.AvatarImageView avatarImageView;
@@ -176,7 +178,7 @@ public class MediaActivity extends BaseFragment implements SharedMediaLayout.Sha
 
             @Override
             public TLRPC.Chat getCurrentChat() {
-                return null;
+                return currentChat;
             }
 
             @Override
@@ -307,6 +309,10 @@ public class MediaActivity extends BaseFragment implements SharedMediaLayout.Sha
 
     public void setChatInfo(TLRPC.ChatFull currentChatInfo) {
         this.currentChatInfo = currentChatInfo;
+    }
+
+    public void setChat(TLRPC.Chat currentChat) {
+        this.currentChat = currentChat;
     }
 
     public long getDialogId() {

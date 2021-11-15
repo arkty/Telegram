@@ -29,6 +29,7 @@ import android.os.SystemClock;
 import android.provider.MediaStore;
 import android.text.TextUtils;
 import android.util.Base64;
+import android.util.Log;
 import android.util.SparseArray;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -3093,7 +3094,13 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         if (params != null && params.containsKey("originalPath")) {
             originalPath = params.get("originalPath");
         }
-
+        TLRPC.Peer sendAs = null;
+        if (DialogObject.isChatDialog(peer)) {
+            TLRPC.ChatFull chat = getMessagesController().getChatFull(-peer);
+            Log.v("Contest_2", "chat.helper = " + chat);
+            sendAs = chat.default_send_as;
+        }
+        Log.v("Contest_2", "sendAs = " + sendAs);
         TLRPC.Message newMsg = null;
         MessageObject newMsgObj = null;
         DelayedMessage delayedMessage = null;
@@ -3633,6 +3640,7 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
                 if (encryptedChat == null) {
                     TLRPC.TL_messages_sendMessage reqSend = new TLRPC.TL_messages_sendMessage();
                     reqSend.message = message;
+                    // TODO Contest_2 reqSend.send_as
                     reqSend.clear_draft = retryMessageObject == null;
                     reqSend.silent = newMsg.silent;
                     reqSend.peer = sendToPeer;

@@ -616,6 +616,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     public long linkedChatId;
     public boolean isRepliesChat;
     public boolean isPinnedChat;
+    public boolean noForwards;
     private boolean isPressed;
     private boolean forwardName;
     private boolean isHighlighted;
@@ -9599,7 +9600,7 @@ public class ChatMessageCell extends BaseCell implements SeekBar.SeekBarDelegate
     }
 
     private boolean checkNeedDrawShareButton(MessageObject messageObject) {
-        if (currentMessageObject.deleted || currentMessageObject.isSponsored()) {
+        if (currentMessageObject.deleted || currentMessageObject.isSponsored() || noForwards) {
             return false;
         }
         if (currentPosition != null) {

@@ -13,6 +13,7 @@ import android.content.Context;
 import android.content.res.Configuration;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PorterDuff;
 import android.graphics.PorterDuffColorFilter;
@@ -48,6 +49,7 @@ import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.core.content.ContextCompat;
@@ -126,7 +128,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
     public static final int VIEW_TYPE_MEDIA_ACTIVITY = 0;
     public static final int VIEW_TYPE_PROFILE_ACTIVITY = 1;
 
-    private static final int[] supportedFastScrollTypes = new int[] {
+    private static final int[] supportedFastScrollTypes = new int[]{
             MediaDataController.MEDIA_PHOTOVIDEO,
             MediaDataController.MEDIA_FILE,
             MediaDataController.MEDIA_AUDIO,
@@ -191,7 +193,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
             }
             if (ev.getActionMasked() == MotionEvent.ACTION_DOWN) {
                 View view = (View) getParent();
-               // float x = ev.getX() - view.getX() - getX() - mediaPages[0].getX();
+                // float x = ev.getX() - view.getX() - getX() - mediaPages[0].getX();
                 float y = ev.getY() - view.getY() - getY() - mediaPages[0].getY();
                 if (y > 0) {
                     maybePinchToZoomTouchMode = true;
@@ -1510,7 +1512,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                                     photoVideoOptionsAlpha = 1f - scrollProgress;
                                 }
                                 photoVideoOptionsItem.setAlpha(photoVideoOptionsAlpha);
-                                photoVideoOptionsItem.setVisibility((photoVideoOptionsAlpha == 0  || !canShowSearchItem()) ? INVISIBLE : View.VISIBLE);
+                                photoVideoOptionsItem.setVisibility((photoVideoOptionsAlpha == 0 || !canShowSearchItem()) ? INVISIBLE : View.VISIBLE);
                             } else {
                                 searchItem.setAlpha(0.0f);
                             }
@@ -1642,7 +1644,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                                 int rowsCount1 = (int) Math.ceil(photoVideoAdapter.getItemCount() / (float) mediaColumnsCount);
                                 int rowsCount2 = (int) Math.ceil(photoVideoAdapter.getItemCount() / (float) animateToColumnsCount);
                                 rowsOffset = (pinchCenterPosition / animateToColumnsCount - firstVisibleItemPosition2 / animateToColumnsCount) - (pinchCenterPosition / mediaColumnsCount - firstVisibleItemPosition / mediaColumnsCount);
-                                if ((firstVisibleItemPosition / mediaColumnsCount - rowsOffset < 0  && animateToColumnsCount < mediaColumnsCount) || (firstVisibleItemPosition2 / animateToColumnsCount + rowsOffset < 0 && animateToColumnsCount > mediaColumnsCount)) {
+                                if ((firstVisibleItemPosition / mediaColumnsCount - rowsOffset < 0 && animateToColumnsCount < mediaColumnsCount) || (firstVisibleItemPosition2 / animateToColumnsCount + rowsOffset < 0 && animateToColumnsCount > mediaColumnsCount)) {
                                     rowsOffset = 0;
                                 }
                                 if ((lastVisibleItemPosition2 / mediaColumnsCount + rowsOffset >= rowsCount1 && animateToColumnsCount > mediaColumnsCount) || (lastVisibleItemPosition / animateToColumnsCount - rowsOffset >= rowsCount2 && animateToColumnsCount < mediaColumnsCount)) {
@@ -2539,7 +2541,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                     photoVideoOptionsAlpha = progress;
                 }
                 photoVideoOptionsItem.setAlpha(photoVideoOptionsAlpha);
-                photoVideoOptionsItem.setVisibility((photoVideoOptionsAlpha == 0  || !canShowSearchItem()) ? INVISIBLE : View.VISIBLE);
+                photoVideoOptionsItem.setVisibility((photoVideoOptionsAlpha == 0 || !canShowSearchItem()) ? INVISIBLE : View.VISIBLE);
                 if (canShowSearchItem()) {
                     if (searchItemState == 1) {
                         searchItem.setAlpha(progress);
@@ -3030,6 +3032,16 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                 cantDeleteMessagesCount = 0;
             }, null);
         } else if (id == forward) {
+            // TODO Contest_1 use HintView and add text
+            TLRPC.Chat chat = delegate.getCurrentChat();
+            if (chat != null && chat.noforwards) {
+                Toast toast = Toast.makeText(
+                        actionModeLayout.getContext(),
+                        "Forwards from this channel are restricted",
+                        Toast.LENGTH_LONG);
+                toast.show();
+                return;
+            }
             Bundle args = new Bundle();
             args.putBoolean("onlySelect", true);
             args.putInt("dialogsType", 3);
@@ -3289,7 +3301,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                             photoVideoOptionsAlpha = 1f - scrollProgress;
                         }
                         photoVideoOptionsItem.setAlpha(photoVideoOptionsAlpha);
-                        photoVideoOptionsItem.setVisibility((photoVideoOptionsAlpha == 0  || !canShowSearchItem()) ? INVISIBLE : View.VISIBLE);
+                        photoVideoOptionsItem.setVisibility((photoVideoOptionsAlpha == 0 || !canShowSearchItem()) ? INVISIBLE : View.VISIBLE);
                     } else {
                         searchItem.setAlpha(0.0f);
                     }
@@ -3697,7 +3709,7 @@ public class SharedMediaLayout extends FrameLayout implements NotificationCenter
                     gifAdapter.notifyDataSetChanged();
                 }
 
-                if (type == 0 ||  type == 1 || type == 2 || type == 4) {
+                if (type == 0 || type == 1 || type == 2 || type == 4) {
                     loadFastScrollData(true);
                 }
             }

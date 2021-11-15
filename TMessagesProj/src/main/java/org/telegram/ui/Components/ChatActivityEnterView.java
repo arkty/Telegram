@@ -52,6 +52,7 @@ import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.text.style.ImageSpan;
+import android.util.Log;
 import android.util.Property;
 import android.util.TypedValue;
 import android.view.ActionMode;
@@ -92,6 +93,7 @@ import androidx.core.view.inputmethod.InputContentInfoCompat;
 import androidx.customview.widget.ExploreByTouchHelper;
 import androidx.recyclerview.widget.ChatListItemAnimator;
 import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import org.telegram.messenger.AccountInstance;
 import org.telegram.messenger.AndroidUtilities;
@@ -116,6 +118,7 @@ import org.telegram.messenger.Utilities;
 import org.telegram.messenger.VideoEditedInfo;
 import org.telegram.messenger.camera.CameraController;
 import org.telegram.tgnet.ConnectionsManager;
+import org.telegram.tgnet.TLObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.ActionBarMenuSubItem;
@@ -124,6 +127,7 @@ import org.telegram.ui.ActionBar.AdjustPanLayoutHelper;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.SimpleTextView;
 import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.Cells.GroupCreateUserCell;
 import org.telegram.ui.ChatActivity;
 import org.telegram.ui.DialogsActivity;
 import org.telegram.ui.GroupStickersActivity;
@@ -325,6 +329,11 @@ public class ChatActivityEnterView extends FrameLayout implements NotificationCe
     private ActionBarPopupWindow.ActionBarPopupWindowLayout sendPopupLayout;
     private ImageView cancelBotButton;
     private ImageView[] emojiButton = new ImageView[2];
+
+    private BackupImageView sendMessageAsButton;
+    private ActionBarPopupWindow sendMessageAsPopupWindow;
+    private ActionBarPopupWindow.ActionBarPopupWindowLayout sendMessageAsPopupLayout;
+
     @SuppressWarnings("FieldCanBeLocal")
     private ImageView emojiButton1;
     @SuppressWarnings("FieldCanBeLocal")
@@ -1726,6 +1735,14 @@ public class ChatActivityEnterView extends FrameLayout implements NotificationCe
         frameLayout.setClipChildren(false);
         textFieldContainer.addView(frameLayout, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM, 0, 0, 48, 0));
 
+        sendMessageAsButton = new BackupImageView(context);
+        sendMessageAsButton.setRoundRadius(AndroidUtilities.dp(24));
+        //int padding = AndroidUtilities.dp(16);
+        //sendMessageAsButton.setPadding(padding, padding, padding, padding);
+        sendMessageAsButton.setVisibility(View.GONE);
+
+        frameLayout.addView(sendMessageAsButton, LayoutHelper.createFrame(32, 32, Gravity.CENTER | Gravity.LEFT, 13, 0, 0, 0));
+
         for (int a = 0; a < 2; a++) {
             emojiButton[a] = new ImageView(context) {
                 @Override
@@ -1948,6 +1965,7 @@ public class ChatActivityEnterView extends FrameLayout implements NotificationCe
                             PhotoViewer.getInstance().setParentActivity(parentActivity, resourcesProvider);
                             PhotoViewer.getInstance().openPhotoForSelect(entries, 0, 2, false, new PhotoViewer.EmptyPhotoViewerProvider() {
                                 boolean sending;
+
                                 @Override
                                 public void sendButtonPressed(int index, VideoEditedInfo videoEditedInfo, boolean notify, int scheduleDate, boolean forceDocument) {
                                     ArrayList<SendMessagesHelper.SendingMediaInfo> photos = new ArrayList<>();
@@ -3061,6 +3079,7 @@ public class ChatActivityEnterView extends FrameLayout implements NotificationCe
     }
 
     Paint backgroundPaint = new Paint();
+
     @Override
     protected void onDraw(Canvas canvas) {
         int top = animatedTop;
@@ -3789,6 +3808,7 @@ public class ChatActivityEnterView extends FrameLayout implements NotificationCe
             emojiView.setChatInfo(info);
         }
         setSlowModeTimer(chatInfo.slowmode_next_send_date);
+        setupSendMessageAs();
     }
 
     public void checkRoundVideo() {
@@ -3830,6 +3850,192 @@ public class ChatActivityEnterView extends FrameLayout implements NotificationCe
 
     public boolean hasRecordVideo() {
         return hasRecordVideo;
+    }
+
+    private void setupSendMessageAs() {
+
+        sendMessageAsButton.setOnClickListener(v -> {
+            onSendMessageAsClicked(v);
+        });
+        setupSendMessageAsLayout();
+        requestLayout();
+    }
+
+    private void setupSendMessageAsLayout() {
+
+        sendMessageAsPopupLayout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(parentActivity, resourcesProvider);
+
+        if (info.default_send_as == null) {
+            sendMessageAsButton.setVisibility(View.GONE);
+        }
+
+        sendMessageAsPopupLayout.setAnimationEnabled(false);
+        sendMessageAsPopupLayout.setOnTouchListener(new OnTouchListener() {
+
+            private android.graphics.Rect popupRect = new android.graphics.Rect();
+
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                if (event.getActionMasked() == MotionEvent.ACTION_DOWN) {
+                    if (sendMessageAsPopupWindow != null && sendMessageAsPopupWindow.isShowing()) {
+                        v.getHitRect(popupRect);
+                        if (!popupRect.contains((int) event.getX(), (int) event.getY())) {
+                            sendMessageAsPopupWindow.dismiss();
+                        }
+                    }
+                }
+                return false;
+            }
+        });
+        sendMessageAsPopupLayout.setDispatchKeyEventListener(keyEvent -> {
+            if (keyEvent.getKeyCode() == KeyEvent.KEYCODE_BACK && keyEvent.getRepeatCount() == 0 && sendPopupWindow != null && sendPopupWindow.isShowing()) {
+                sendMessageAsPopupWindow.dismiss();
+            }
+        });
+        sendMessageAsPopupLayout.setShownFromBotton(false);
+
+        RecyclerListView sendMessageListView = new RecyclerListView(getContext());
+        sendMessageListView.setLayoutManager(new LinearLayoutManager(getContext(), LinearLayoutManager.VERTICAL, false));
+        sendMessageListView.setVerticalScrollBarEnabled(false);
+        sendMessageListView.setClipToPadding(false);
+        sendMessageListView.setEnabled(true);
+        sendMessageListView.setSelectorDrawableColor(0);
+        //sendMessageListView.setPadding(AndroidUtilities.dp(10), 0, AndroidUtilities.dp(10), 0);
+
+        sendMessageAsPopupLayout.addView(sendMessageListView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.TOP | Gravity.LEFT, 0, 16, 0, 16));
+        TLRPC.TL_channels_getSendAs req = new TLRPC.TL_channels_getSendAs();
+        req.peer = parentFragment.getMessagesController().getInputPeer(-parentFragment.getCurrentChat().id);
+        parentFragment.getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+            if (response != null) {
+                TLRPC.TL_channels_sendAsPeers res = (TLRPC.TL_channels_sendAsPeers) response;
+                sendMessageListView.setAdapter(new SendMessageListAdapter(getContext(), res.peers));
+                sendMessageListView.setOnItemClickListener((v, position) -> {
+                    info.default_send_as = res.peers.get(position);
+                    parentFragment.getMessagesController().getChatFull(info.id).default_send_as = info.default_send_as;
+
+                    sendMessageListView.getAdapter().notifyDataSetChanged();
+                    invalidateSendMessageAsButton();
+                    sendMessageAsPopupWindow.dismiss();
+
+                    TLRPC.TL_messages_saveDefaultSendAs setDefaultSendAs = new TLRPC.TL_messages_saveDefaultSendAs();
+                    setDefaultSendAs.send_as = parentFragment.getMessagesController().getInputPeer(info.default_send_as);
+                    setDefaultSendAs.peer = parentFragment.getMessagesController().getInputPeer(-parentFragment.getCurrentChat().id);
+                    parentFragment.getConnectionsManager().sendRequest(setDefaultSendAs, (r, e) -> { });
+                });
+                invalidateSendMessageAsButton();
+            }
+        }));
+
+        sendMessageAsPopupLayout.setupRadialSelectors(getThemedColor(Theme.key_dialogButtonSelector));
+
+        sendMessageAsPopupWindow = new ActionBarPopupWindow(sendMessageAsPopupLayout, LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT) {
+            @Override
+            public void dismiss() {
+                super.dismiss();
+                sendButton.invalidate();
+            }
+        };
+        sendMessageAsPopupWindow.setAnimationEnabled(false);
+        sendMessageAsPopupWindow.setAnimationStyle(R.style.PopupContextAnimation2);
+        sendMessageAsPopupWindow.setOutsideTouchable(true);
+        sendMessageAsPopupWindow.setClippingEnabled(true);
+        sendMessageAsPopupWindow.setInputMethodMode(ActionBarPopupWindow.INPUT_METHOD_NOT_NEEDED);
+        sendMessageAsPopupWindow.setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_UNSPECIFIED);
+        sendMessageAsPopupWindow.getContentView().setFocusableInTouchMode(true);
+
+        sendMessageAsPopupLayout.measure(MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(AndroidUtilities.dp(1000), MeasureSpec.AT_MOST));
+    }
+
+    private void invalidateSendMessageAsButton() {
+        if (info.default_send_as != null) {
+            sendMessageAsButton.setVisibility(View.VISIBLE);
+            AvatarDrawable avatarDrawable = new AvatarDrawable();
+
+            Log.v("Contest_2", "invalidateSendMessageAsButton: " + info.default_send_as.user_id + ", " + info.default_send_as.channel_id);
+            if (info.default_send_as.user_id > 0) {
+                TLRPC.User user = MessagesController.getInstance(currentAccount).getUser(info.default_send_as.user_id);
+                avatarDrawable.setInfo(user);
+                sendMessageAsButton.setForUserOrChat(user, avatarDrawable);
+            } else {
+                TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(info.default_send_as.channel_id);
+                Log.v("Contest_2", "invalidateSendMessageAsButton.chat: " + chat);
+                avatarDrawable.setInfo(chat);
+                sendMessageAsButton.setForUserOrChat(chat, avatarDrawable);
+            }
+            //sendMessageAsButton.setTag(avatarDrawable);
+            //sendMessageAsButton.setImage(null, "50_50", avatarDrawable);
+        } else {
+            sendMessageAsButton.setVisibility(View.GONE);
+        }
+        requestLayout();
+    }
+
+    private boolean onSendMessageAsClicked(View view) {
+        if (parentFragment == null) {
+            return false;
+        }
+        sendMessageAsButton.setImageResource(R.drawable.ic_send_as_close);
+        sendMessageAsPopupWindow.setFocusable(true);
+        view.getLocationInWindow(location);
+        int y;
+        if (keyboardVisible && ChatActivityEnterView.this.getMeasuredHeight() > AndroidUtilities.dp(topView != null && topView.getVisibility() == VISIBLE ? 48 + 58 : 58)) {
+            y = location[1] + view.getMeasuredHeight();
+        } else {
+            y = location[1] - sendMessageAsPopupLayout.getMeasuredHeight() - AndroidUtilities.dp(2);
+        }
+        sendMessageAsPopupWindow.showAtLocation(view, Gravity.LEFT | Gravity.TOP, AndroidUtilities.dp(8), y);
+        sendMessageAsPopupWindow.dimBehind();
+        sendMessageAsPopupWindow.setOnDismissListener(() -> {
+            invalidateSendMessageAsButton();
+        });
+        view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP, HapticFeedbackConstants.FLAG_IGNORE_GLOBAL_SETTING);
+
+        return false;
+    }
+
+    class SendMessageListAdapter extends RecyclerListView.SelectionAdapter {
+        private Context context;
+        private ArrayList<TLRPC.Peer> chats;
+
+        public SendMessageListAdapter(Context context, ArrayList<TLRPC.Peer> chats) {
+            this.context = context;
+            this.chats = chats;
+        }
+
+        @NonNull
+        @Override
+        public RecyclerView.ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
+            return new RecyclerListView.Holder(new GroupCreateUserCell(context, 2, 0, false, false));
+        }
+
+        @Override
+        public void onBindViewHolder(@NonNull RecyclerView.ViewHolder holder, int position) {
+            TLRPC.Peer peer = chats.get(position);
+            long did = MessageObject.getPeerId(peer);
+            GroupCreateUserCell cell = (GroupCreateUserCell) holder.itemView;
+            TLObject object;
+            String status;
+            if (did > 0) {
+                object = MessagesController.getInstance(currentAccount).getUser(did);
+                status = LocaleController.getString("VoipGroupPersonalAccount", R.string.VoipGroupPersonalAccount);
+            } else {
+                TLRPC.Chat chat = MessagesController.getInstance(currentAccount).getChat(-did);
+                object = chat;
+                status = LocaleController.formatPluralString("Subscribers", chat.participants_count);
+            }
+            cell.setObject(object, null, status, position != getItemCount() - 1);
+            cell.setChecked(MessageObject.getPeerId(info.default_send_as) == did, false);
+        }
+
+        @Override
+        public int getItemCount() {
+            return chats.size();
+        }
+
+        @Override
+        public boolean isEnabled(RecyclerView.ViewHolder holder) {
+            return true;
+        }
     }
 
     private void updateFieldHint(boolean animated) {
@@ -8406,6 +8612,11 @@ public class ChatActivityEnterView extends FrameLayout implements NotificationCe
                 ((MarginLayoutParams) emojiButton[i].getLayoutParams()).leftMargin = AndroidUtilities.dp(10) + botCommandsMenuButton.getMeasuredWidth();
             }
             ((MarginLayoutParams) messageEditText.getLayoutParams()).leftMargin = AndroidUtilities.dp(57) + botCommandsMenuButton.getMeasuredWidth();
+        } else if (sendMessageAsButton != null && sendMessageAsButton.getVisibility() == View.VISIBLE) {
+            for (int i = 0; i < emojiButton.length; i++) {
+                ((MarginLayoutParams) emojiButton[i].getLayoutParams()).leftMargin = AndroidUtilities.dp(48 + 3);//+ sendMessageAsButton.getMeasuredWidth();
+            }
+            ((MarginLayoutParams) messageEditText.getLayoutParams()).leftMargin = AndroidUtilities.dp(48 + 50); //+ sendMessageAsButton.getMeasuredWidth();
         } else {
             for (int i = 0; i < emojiButton.length; i++) {
                 ((MarginLayoutParams) emojiButton[i].getLayoutParams()).leftMargin = AndroidUtilities.dp(3);

@@ -3382,6 +3382,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     TLRPC.ChatFull old = fullChats.get(chatId);
                     if (old != null) {
                         res.full_chat.inviterId = old.inviterId;
+                        res.full_chat.default_send_as = old.default_send_as;
                     }
                     fullChats.put(chatId, res.full_chat);
                     applyDialogNotificationsSettings(-chatId, res.full_chat.notify_settings);
@@ -4483,6 +4484,30 @@ public class MessagesController extends BaseController implements NotificationCe
         }
     }
 
+    /**
+     * TODO: add pending task to storage and implement restoring process
+     * Note: this will remove whole chat, i've not figured out why min_date, max_date not working
+     */
+    public void deleteMessagesRange(long dialogId, int minDate, int maxDate, boolean forAll) {
+        Log.e("Contest_3","onRangeRemove(" + dialogId + ", " + minDate + ", " + maxDate + ", " + forAll + ")");
+        TLRPC.TL_messages_deleteHistory req = new TLRPC.TL_messages_deleteHistory();
+        req.peer = getInputPeer(dialogId);
+        req.min_date = minDate;
+        req.max_date = maxDate;
+        req.just_clear = false;
+        req.revoke = forAll;
+
+        getConnectionsManager().sendRequest(req, (response, error) -> {
+            if (error == null) {
+                TLRPC.TL_messages_affectedHistory res = (TLRPC.TL_messages_affectedHistory) response;
+                processNewDifferenceParams(-1, res.pts, -1, res.pts_count);
+                getMessagesStorage().updateDialogsWithDeletedMessages(dialogId, minDate, maxDate);
+                Log.e("Contest_3","onRangeRemoveSuccess: " + res.pts + ", " + res.pts_count + ", " + res.offset);
+            } else {
+                Log.e("Contest_3","onRangeRemoveError = " + error.text);
+            }
+        });
+    }
     public void deleteMessages(ArrayList<Integer> messages, ArrayList<Long> randoms, TLRPC.EncryptedChat encryptedChat, long dialogId, boolean forAll, boolean scheduled) {
         deleteMessages(messages, randoms, encryptedChat, dialogId, forAll, scheduled, false, 0, null);
     }
@@ -14604,6 +14629,23 @@ public class MessagesController extends BaseController implements NotificationCe
         mainPreferences.edit()
                 .putInt("chatPendingRequests" + chatId, count)
                 .apply();
+    }
+
+    public void toggleNoForwards(long did, boolean enabled) {
+        Log.v("Contest_1", "toggleNoForwards.call: " + did);
+        TLRPC.TL_messages_toggleNoForwards req = new TLRPC.TL_messages_toggleNoForwards();
+        req.peer = getInputPeer(did);
+        req.enabled = enabled;
+        getConnectionsManager().sendRequest(req, (response, error) -> {
+
+            if (response != null) {
+                Log.v("Contest_1", "toggleNoForwards.response: " + response);
+                TLRPC.Updates updates = (TLRPC.Updates) response;
+                processUpdates(updates, false);
+            } else {
+                Log.v("Contest_1", "toggleNoForwards.error(" + error.code + "): " + error.text);
+            }
+        });
     }
 
     public interface MessagesLoadedCallback {

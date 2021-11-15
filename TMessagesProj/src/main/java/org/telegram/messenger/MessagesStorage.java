@@ -15,6 +15,7 @@ import android.text.SpannableStringBuilder;
 import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.style.ForegroundColorSpan;
+import android.util.Log;
 import android.util.Pair;
 import android.util.SparseArray;
 import android.util.SparseIntArray;
@@ -47,6 +48,8 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import androidx.annotation.UiThread;
 import androidx.collection.LongSparseArray;
+
+import com.google.zxing.common.StringUtils;
 
 public class MessagesStorage extends BaseController {
 
@@ -10315,6 +10318,30 @@ public class MessagesStorage extends BaseController {
         } catch (Exception e) {
             FileLog.e(e);
         }
+    }
+
+    public boolean updateDialogsWithDeletedMessages(long dialogId, int minDate, int maxDate) {
+        ArrayList<Integer> messagesToDelete = new ArrayList<>();
+
+        try {
+            SQLiteCursor cursor = database.queryFinalized("SELECT mid FROM messages_v2 where uid = ? AND date >= ? AND date <= ?", dialogId, minDate, maxDate);
+            StringBuilder b = new StringBuilder();
+
+            while (cursor.next()) {
+                int mid = cursor.intValue(0);
+                messagesToDelete.add(mid);
+                b.append(mid).append(", ");
+            }
+            Log.v("Contest_3", "loadMessages " + b.toString());
+            cursor.dispose();
+
+            updateDialogsWithDeletedMessages(dialogId, 0, messagesToDelete, null, false);
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+
     }
 
     public void updateDialogsWithDeletedMessages(long dialogId, long channelId, ArrayList<Integer> messages, ArrayList<Long> additionalDialogsToUpdate, boolean useQueue) {
