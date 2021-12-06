@@ -27,6 +27,7 @@ import android.os.SystemClock;
 import android.text.Layout;
 import android.text.StaticLayout;
 import android.text.TextPaint;
+import android.util.Log;
 import android.util.SparseIntArray;
 import android.util.StateSet;
 import android.view.GestureDetector;
@@ -722,7 +723,7 @@ public class RecyclerListView extends RecyclerView {
     private class RecyclerListViewItemClickListener implements OnItemTouchListener {
 
         public RecyclerListViewItemClickListener(Context context) {
-            gestureDetector = new GestureDetector(context, new GestureDetector.OnGestureListener() {
+            gestureDetector = new GestureDetector(context, new GestureDetector.SimpleOnGestureListener() {
                 @Override
                 public boolean onSingleTapUp(MotionEvent e) {
                     if (currentChildView != null && (onItemClickListener != null || onItemClickListenerExtended != null)) {
@@ -813,6 +814,17 @@ public class RecyclerListView extends RecyclerView {
                 @Override
                 public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
                     return false;
+                }
+                @Override
+                public boolean onDoubleTap(MotionEvent e) {
+                    Log.v("Reactions_2", "onDoubleTap");
+                    return true;
+                }
+
+                @Override
+                public boolean onDoubleTapEvent(MotionEvent e) {
+                    Log.v("Reactions_2", "onDoubleTapEvent");
+                    return super.onDoubleTapEvent(e);
                 }
             });
             gestureDetector.setIsLongpressEnabled(false);

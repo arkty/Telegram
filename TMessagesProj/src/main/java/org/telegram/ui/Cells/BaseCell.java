@@ -10,6 +10,7 @@ package org.telegram.ui.Cells;
 
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.util.Log;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.ViewConfiguration;
@@ -18,10 +19,12 @@ import android.view.ViewGroup;
 public abstract class BaseCell extends ViewGroup {
 
     private final class CheckForTap implements Runnable {
+
         public void run() {
             if (pendingCheckForLongPress == null) {
                 pendingCheckForLongPress = new CheckForLongPress();
             }
+
             pendingCheckForLongPress.currentPressCount = ++pressCount;
             postDelayed(pendingCheckForLongPress, ViewConfiguration.getLongPressTimeout() - ViewConfiguration.getTapTimeout());
         }
@@ -43,10 +46,29 @@ public abstract class BaseCell extends ViewGroup {
         }
     }
 
+    class CheckForDoubleTap implements Runnable {
+        public int currentPressCount;
+        public void run() {
+            Log.v("Reactions_2", "CheckForDoubleTap: " + currentPressCount + ", " + downCount);
+            if (pendingCheckForDoubleTap != null && getParent() != null && downCount > currentPressCount) {
+                pendingCheckForDoubleTap = null;
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP);
+                if (onDoubleTap()) {
+                    MotionEvent event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_CANCEL, 0, 0, 0);
+                    onTouchEvent(event);
+                    event.recycle();
+                }
+            }
+        }
+    }
+
     private boolean checkingForLongPress = false;
     private CheckForLongPress pendingCheckForLongPress = null;
+
     private int pressCount = 0;
+    private int downCount = 0;
     private CheckForTap pendingCheckForTap = null;
+    private CheckForDoubleTap pendingCheckForDoubleTap = null;
 
     public BaseCell(Context context) {
         super(context);
@@ -82,6 +104,7 @@ public abstract class BaseCell extends ViewGroup {
         if (pendingCheckForTap == null) {
             pendingCheckForTap = new CheckForTap();
         }
+
         postDelayed(pendingCheckForTap, ViewConfiguration.getTapTimeout());
     }
 
@@ -95,12 +118,35 @@ public abstract class BaseCell extends ViewGroup {
         }
     }
 
+    protected void startCheckDoubleTap() {
+        Log.v("Reactions_2", "startCheckDoubleTap: " + (pendingCheckForDoubleTap != null));
+        downCount++;
+        if(pendingCheckForDoubleTap != null) {
+            return;
+        }
+        pendingCheckForDoubleTap = new CheckForDoubleTap();
+        pendingCheckForDoubleTap.currentPressCount = downCount;
+        postDelayed(pendingCheckForDoubleTap, ViewConfiguration.getDoubleTapTimeout());
+    }
+
+    protected void cancelCheckDoubleTap() {
+        if (pendingCheckForDoubleTap != null) {
+            removeCallbacks(pendingCheckForDoubleTap);
+            pendingCheckForDoubleTap = null;
+        }
+    }
+
     @Override
     public boolean hasOverlappingRendering() {
         return false;
     }
 
     protected boolean onLongPress() {
+        return true;
+    }
+
+    protected boolean onDoubleTap() {
+        Log.v("Reactions_2", "onDoubleTap!!!");
         return true;
     }
 }

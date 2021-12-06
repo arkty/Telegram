@@ -20,8 +20,10 @@ import android.text.StaticLayout;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.text.style.URLSpan;
+import android.util.Log;
 import android.view.MotionEvent;
 import android.view.SoundEffectConstants;
+import android.view.ViewConfiguration;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 
@@ -308,6 +310,7 @@ public class ChatActionCell extends BaseCell implements DownloadController.FileD
         } else {
             if (event.getAction() != MotionEvent.ACTION_MOVE) {
                 cancelCheckLongPress();
+                cancelCheckDoubleTap();
             }
             if (imagePressed) {
                 if (event.getAction() == MotionEvent.ACTION_UP) {

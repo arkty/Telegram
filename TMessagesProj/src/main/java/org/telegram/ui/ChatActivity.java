@@ -215,6 +215,7 @@ import org.telegram.ui.Components.PipRoundVideoView;
 import org.telegram.ui.Components.PollVotesAlert;
 import org.telegram.ui.Components.RLottieDrawable;
 import org.telegram.ui.Components.RadialProgressView;
+import org.telegram.ui.Components.ReactionsLayout;
 import org.telegram.ui.Components.RecyclerAnimationScrollHelper;
 import org.telegram.ui.Components.RecyclerListView;
 import org.telegram.ui.Components.ReportAlert;
@@ -20027,6 +20028,17 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
                 }
             });
             scrimPopupContainerLayout.setOrientation(LinearLayout.VERTICAL);
+
+            ActionBarPopupWindow.ActionBarPopupWindowLayout reactionsPopup = new ActionBarPopupWindow.ActionBarPopupWindowLayout(getParentActivity(), R.drawable.popup_fixed_alert, themeDelegate);
+            reactionsPopup.setMinimumWidth(AndroidUtilities.dp(240));
+            reactionsPopup.setBackgroundColor(getThemedColor(Theme.key_actionBarDefaultSubmenuBackground));
+            reactionsPopup.addView(new ReactionsLayout(this, chatInfo, selectedObject, (reaction) -> {
+                if(scrimPopupWindow != null) {
+                    scrimPopupWindow.dismiss();
+                }
+            }));
+            scrimPopupContainerLayout.addView(reactionsPopup, LayoutHelper.createLinear(240, LayoutHelper.WRAP_CONTENT, 0, 0, 0, 8, 0));
+
             boolean showMessageSeen = currentChat != null && message.isOutOwner() && message.isSent() && !message.isEditing() && !message.isSending() && !message.isSendError() && !message.isContentUnread() && !message.isUnread() && (ConnectionsManager.getInstance(currentAccount).getCurrentTime() - message.messageOwner.date < 7 * 86400)  && (ChatObject.isMegagroup(currentChat) || !ChatObject.isChannel(currentChat)) && chatInfo != null && chatInfo.participants_count < 50 && !(message.messageOwner.action instanceof TLRPC.TL_messageActionChatJoinedByRequest);
             MessageSeenView messageSeenView = null;
             if (showMessageSeen) {
@@ -22892,7 +22904,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
 
                     @Override
                     public void didPressReaction(ChatMessageCell cell, TLRPC.TL_reactionCount reaction) {
-                        getSendMessagesHelper().sendReaction(cell.getMessageObject(), reaction.reaction, ChatActivity.this);
+                        getSendMessagesHelper().sendReaction(cell.getMessageObject(), reaction.reaction);
                     }
 
                     @Override
@@ -23219,6 +23231,11 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
 
                     public boolean isLandscape() {
                         return contentView.getMeasuredWidth() > contentView.getMeasuredHeight();
+                    }
+
+                    @Override
+                    public void didSetReaction(MessageObject msg, String reaction) {
+                        getSendMessagesHelper().sendReaction(msg, reaction);
                     }
                 });
                 if (currentEncryptedChat == null) {

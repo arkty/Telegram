@@ -2653,8 +2653,8 @@ public class SendMessagesHelper extends BaseController implements NotificationCe
         return voteSendTime.get(pollId, 0L);
     }
 
-    public void sendReaction(MessageObject messageObject, CharSequence reaction, ChatActivity parentFragment) {
-        if (messageObject == null || parentFragment == null) {
+    public void sendReaction(MessageObject messageObject, CharSequence reaction) {
+        if (messageObject == null) {
             return;
         }
         TLRPC.TL_messages_sendReaction req = new TLRPC.TL_messages_sendReaction();

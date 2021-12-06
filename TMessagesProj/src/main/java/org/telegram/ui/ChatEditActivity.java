@@ -113,6 +113,7 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
     private TextCell membersCell;
     private TextCell memberRequestsCell;
     private TextCell inviteLinksCell;
+    private TextCell reactionsCell;
     private TextCell adminCell;
     private TextCell blockCell;
     private TextCell logCell;
@@ -214,6 +215,7 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
         signMessages = currentChat.signatures;
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.chatInfoDidLoad);
         NotificationCenter.getInstance(currentAccount).addObserver(this, NotificationCenter.updateInterfaces);
+        NotificationCenter.getGlobalInstance().addObserver(this, NotificationCenter.availableReactionsDidChanged);
 
         if (info != null) {
             loadLinksCount();
@@ -244,6 +246,7 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
         }
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.chatInfoDidLoad);
         NotificationCenter.getInstance(currentAccount).removeObserver(this, NotificationCenter.updateInterfaces);
+        NotificationCenter.getGlobalInstance().removeObserver(this, NotificationCenter.availableReactionsDidChanged);
         if (nameTextView != null) {
             nameTextView.onDestroy();
         }
@@ -810,6 +813,20 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
             presentFragment(fragment);
         });
 
+        reactionsCell = new TextCell(context);
+        reactionsCell.setBackgroundDrawable(Theme.getSelectorDrawable(false));
+        reactionsCell.setOnClickListener(v -> {
+            boolean reactionsEnabled;
+            if(info instanceof TLRPC.TL_channelFull) {
+                reactionsEnabled = (info.flags & 1073741824) != 0;
+            } else {
+                reactionsEnabled = (info.flags & 262144) != 0;
+            }
+            ManageReactionsActivity fragment = new ManageReactionsActivity(chatId, reactionsEnabled);
+            presentFragment(fragment);
+        });
+
+
         adminCell = new TextCell(context);
         adminCell.setBackgroundDrawable(Theme.getSelectorDrawable(false));
         adminCell.setOnClickListener(v -> {
@@ -862,6 +879,11 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
         if (isChannel) {
             infoContainer.addView(inviteLinksCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
+
+        if (ChatObject.hasAdminRights(currentChat)) {
+            infoContainer.addView(reactionsCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        }
+
         if (isChannel || currentChat.gigagroup) {
             infoContainer.addView(blockCell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         }
@@ -1014,6 +1036,8 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
             if ((mask & MessagesController.UPDATE_MASK_AVATAR) != 0) {
                 setAvatar();
             }
+        } else if (id == NotificationCenter.availableReactionsDidChanged) {
+            updateReactions();
         }
     }
 
@@ -1451,12 +1475,39 @@ public class ChatEditActivity extends BaseFragment implements ImageUpdater.Image
             }
         }
 
+        updateReactions();
+
         if (stickersCell != null && info != null) {
             if (info.stickerset != null) {
                 stickersCell.setTextAndValue(LocaleController.getString("GroupStickers", R.string.GroupStickers), info.stickerset.title, false);
             } else {
                 stickersCell.setText(LocaleController.getString("GroupStickers", R.string.GroupStickers), false);
             }
+        }
+        getMessagesController().reloadReactions((response, error) -> {
+            updateReactions();
+        });
+    }
+
+    private void updateReactions() {
+        if (reactionsCell != null && info != null) {
+            TLRPC.TL_messages_availableReactions reactions = getMessagesController().availableReactions;
+            String reactionsCount = reactions != null ? String.valueOf(reactions.reactions.size()) : "...";
+
+            boolean reactionsEnabled;
+            if(info instanceof TLRPC.TL_channelFull) {
+                reactionsEnabled = (info.flags & 1073741824) != 0;
+            } else {
+                reactionsEnabled = (info.flags & 262144) != 0;
+            }
+
+            reactionsCell.setTextAndValueAndIcon(
+                    LocaleController.getString("Reactions", R.string.Reactions),
+                    !reactionsEnabled ?
+                            LocaleController.getString("ReactionsOff", R.string.ReactionsOff) :
+                            info.available_reactions.size() + "/" + reactionsCount,
+                    R.drawable.actions_reactions, true
+            );
         }
     }
 

@@ -16,6 +16,7 @@ import android.content.SharedPreferences;
 import android.location.Location;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Handler;
 import android.os.Looper;
 import android.os.SystemClock;
 import android.telephony.TelephonyManager;
@@ -28,6 +29,8 @@ import android.util.SparseIntArray;
 
 import androidx.collection.LongSparseArray;
 import androidx.core.app.NotificationManagerCompat;
+
+import com.google.zxing.common.StringUtils;
 
 import org.telegram.SQLite.SQLiteCursor;
 import org.telegram.messenger.support.LongSparseIntArray;
@@ -60,6 +63,7 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -325,6 +329,8 @@ public class MessagesController extends BaseController implements NotificationCe
     private SharedPreferences emojiPreferences;
 
     public volatile boolean ignoreSetOnline;
+
+    public TLRPC.TL_messages_availableReactions availableReactions = null;
 
     private class SponsoredMessagesInfo {
         private ArrayList<MessageObject> messages;
@@ -897,6 +903,71 @@ public class MessagesController extends BaseController implements NotificationCe
                 FileLog.e(e);
             }
         }
+
+        setupReactionsLoading();
+    }
+
+    private void setupReactionsLoading() {
+        Log.v("Reactions_6", "setupReactionsLoading");
+        Handler h = new Handler(Looper.getMainLooper());
+        Runnable load = new Runnable() {
+            @Override
+            public void run() {
+                reloadReactions((response, error) -> {
+                    h.removeCallbacksAndMessages(null);
+                    if(error == null) {
+                        h.postDelayed(this, 3600 * 1000L);
+                    } else {
+                        h.postDelayed(this, 500);
+                    }
+                });
+            }
+        };
+        h.post(load);
+    }
+
+    public void reloadReactions(RequestDelegate completionBlock) {
+        Log.v("Reactions_6", "reloadReactions");
+        TLRPC.TL_messages_getAvailableReactions req = new TLRPC.TL_messages_getAvailableReactions();
+        getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+            if(error == null && response instanceof TLRPC.TL_messages_availableReactions) {
+                availableReactions = (TLRPC.TL_messages_availableReactions) response;
+                NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.availableReactionsDidChanged);
+                Log.v("Reactions_6", "getAvailable = " + availableReactions.reactions.size());
+            } else {
+                Log.v("Reactions_6", "getAvailable: error");
+            }
+            completionBlock.run(response, error);
+        }));
+    }
+    public void setChatAvailableReactions(long chatId, ArrayList<String> reactions) {
+        TLRPC.TL_messages_setChatAvailableReactions req = new TLRPC.TL_messages_setChatAvailableReactions();
+        req.available_reactions = reactions;
+        req.peer = getInputPeer(-chatId);
+        Log.v("Reactions_6", "setChatAvailableReactions: peer" + req.peer + "; " + TextUtils.join(",", reactions));
+        getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
+           if(error == null) {
+               TLRPC.ChatFull chat = getChatFull(chatId);
+               Log.v("Reactions_6", "setChatAvailableReactions: success for " + chat);
+               chat.available_reactions = reactions;
+
+               if(reactions.size() == 0) {
+                   if (chat instanceof TLRPC.TL_channelFull) {
+                       chat.flags &= ~1073741824;
+                   } else {
+                       chat.flags &= ~262144;
+                   }
+               } else {
+                   if (chat instanceof TLRPC.TL_channelFull) {
+                       chat.flags |= 1073741824;
+                   } else {
+                       chat.flags |= 262144;
+                   }
+               }
+           }else{
+               Log.v("Reactions_6", "setChatAvailableReactions: " + error.text + ", " + error.code);
+           }
+        }));
     }
 
     private void sendLoadPeersRequest(TLObject req, ArrayList<TLObject> requests, TLRPC.messages_Dialogs pinnedDialogs, TLRPC.messages_Dialogs pinnedRemoteDialogs, ArrayList<TLRPC.User> users, ArrayList<TLRPC.Chat> chats, ArrayList<DialogFilter> filtersToSave, SparseArray<DialogFilter> filtersToDelete, ArrayList<Integer> filtersOrder, HashMap<Integer, HashSet<Long>> filterDialogRemovals, HashMap<Integer, HashSet<Long>> filterUserRemovals, HashSet<Integer> filtersUnreadCounterReset) {
@@ -3445,7 +3516,11 @@ public class MessagesController extends BaseController implements NotificationCe
         }
         int reqId = getConnectionsManager().sendRequest(req, (response, error) -> {
             if (error == null) {
-                TLRPC.UserFull userFull = (TLRPC.UserFull) response;
+                TLRPC.TL_users_userFull res = (TLRPC.TL_users_userFull) response;
+                TLRPC.UserFull userFull = res.full_user;
+                putUsers(res.users, false);
+                putChats(res.chats, false);
+                res.full_user.user = getUser(res.full_user.id);
                 getMessagesStorage().updateUserInfo(userFull, false);
 
                 AndroidUtilities.runOnUIThread(() -> {
@@ -3736,7 +3811,12 @@ public class MessagesController extends BaseController implements NotificationCe
         getConnectionsManager().sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
             loadingPeerSettings.remove(dialogId);
             if (response != null) {
-                savePeerSettings(dialogId, (TLRPC.TL_peerSettings) response, false);
+                TLRPC.TL_messages_peerSettings res = (TLRPC.TL_messages_peerSettings) response;
+                TLRPC.TL_peerSettings settings = res.settings;
+                putUsers(res.users, false);
+                putChats(res.chats, false);
+
+                savePeerSettings(dialogId,  settings, false);
             }
         }));
     }
@@ -4688,9 +4768,9 @@ public class MessagesController extends BaseController implements NotificationCe
         if (offset == 0) {
             getMessagesStorage().deleteUserChatHistory(-chat.id, user.id);
         }
-        TLRPC.TL_channels_deleteUserHistory req = new TLRPC.TL_channels_deleteUserHistory();
+        TLRPC.TL_channels_deleteParticipantHistory req = new TLRPC.TL_channels_deleteParticipantHistory();
         req.channel = getInputChannel(chat);
-        req.user_id = getInputUser(user);
+        req.participant = getInputPeer(user);
         getConnectionsManager().sendRequest(req, (response, error) -> {
             if (error == null) {
                 TLRPC.TL_messages_affectedHistory res = (TLRPC.TL_messages_affectedHistory) response;
