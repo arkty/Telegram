@@ -410,6 +410,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
     private HintView2 groupEmojiPackHint;
     private HintView2 botMessageHint;
     private HintView2 factCheckHint;
+    private HintView2 botStartHint;
 
     private int reactionsMentionCount;
     private FrameLayout reactionsMentiondownButton;
@@ -7944,6 +7945,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
 
                 ViewGroup.LayoutParams params = bottomOverlayChat.getLayoutParams();
                 params.height = AndroidUtilities.dp(visibility == VISIBLE ? 51 + 8 * 2 : 51);
+                invalidateBotStartHint();
             }
         };
         bottomOverlayStartButton.setBackground(Theme.AdaptiveRipple.filledRect(getThemedColor(Theme.key_featuredStickers_addButton), 8));
@@ -7955,6 +7957,24 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         bottomOverlayStartButton.setVisibility(View.GONE);
         bottomOverlayStartButton.setOnClickListener(v -> bottomOverlayChatText.callOnClick());
         bottomOverlayChat.addView(bottomOverlayStartButton, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT, Gravity.CENTER, 8, 8, 8, 8));
+
+        if(botStartHint == null) {
+            botStartHint = new HintView2(getContext(), HintView2.DIRECTION_BOTTOM);
+            botStartHint.setTextAlign(Layout.Alignment.ALIGN_CENTER);
+            botStartHint.setRounding(12);
+            botStartHint.setText(LocaleController.getString(R.string.BotStartHint));
+            botStartHint.hide();
+            Drawable icon = getContext().getResources().getDrawable(R.drawable.ic_double_arrow_down).mutate();
+            DrawableCompat.setTint(icon, 0xffffffff);
+            botStartHint.setIcon(icon);
+            botStartHint.setDuration(-1);
+
+            AndroidUtilities.runOnUIThread(() -> {
+                FrameLayout.LayoutParams lp = LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.BOTTOM | Gravity.FILL_HORIZONTAL, 0, 0, 0, 0);
+                lp.bottomMargin = dp(68);
+                contentView.addView(botStartHint, lp);
+            }, 300);
+        }
 
         if (currentUser != null && currentUser.bot && currentUser.id != UserObject.VERIFY && !UserObject.isDeleted(currentUser) && !UserObject.isReplyUser(currentUser) && !isInScheduleMode() && chatMode != MODE_PINNED && chatMode != MODE_SAVED && !isReport()) {
             bottomOverlayStartButton.setVisibility(View.VISIBLE);
@@ -12265,6 +12285,20 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
         slowModeHint.setText(AndroidUtilities.replaceTags(LocaleController.formatString("SlowModeHint", R.string.SlowModeHint, time)));
         if (show) {
             slowModeHint.showForView(view, true);
+        }
+    }
+
+    private void invalidateBotStartHint() {
+
+        if (getParentActivity() == null || fragmentView == null || botStartHint == null) {
+            return;
+        }
+
+        if(botUser != null && currentUser.bot && !UserObject.isDeleted(currentUser) && messages.isEmpty()) {
+            botStartHint.show();
+        }
+        else {
+            botStartHint.hide();
         }
     }
 
@@ -25411,6 +25445,7 @@ public class ChatActivity extends BaseFragment implements NotificationCenter.Not
             chatActivityEnterView.setVisibility(View.VISIBLE);
             chatActivityEnterView.setBotInfo(botInfo);
         }
+        invalidateBotStartHint();
         checkRaiseSensors();
     }
 
