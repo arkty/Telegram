@@ -76,6 +76,7 @@ public class LinkActionView extends LinearLayout {
     private QRCodeBottomSheet qrCodeBottomSheet;
     private boolean hideRevokeOption;
     private boolean canEdit = true;
+    private boolean readOnly = false;
     private final boolean isChannel;
     private final float[] point = new float[2];
 
@@ -222,6 +223,12 @@ public class LinkActionView extends LinearLayout {
             if (actionBarPopupWindow != null) {
                 return;
             }
+
+            if(this.readOnly) {
+                showQrCode();
+                return;
+            }
+
             ActionBarPopupWindow.ActionBarPopupWindowLayout layout = new ActionBarPopupWindow.ActionBarPopupWindowLayout(context);
 
             ActionBarMenuSubItem subItem;
@@ -616,5 +623,19 @@ public class LinkActionView extends LinearLayout {
 
     public void setCanEdit(boolean canEdit) {
         this.canEdit = canEdit;
+    }
+
+    public void setReadOnly(boolean readOnly) {
+        if(readOnly == this.readOnly) {
+            return;
+        }
+        this.readOnly = readOnly;
+        if(readOnly) {
+            optionsView.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.msg_qrcode));
+            optionsView.setContentDescription(LocaleController.getString(R.string.GetQRCode));
+        } else {
+            optionsView.setImageDrawable(ContextCompat.getDrawable(getContext(), R.drawable.ic_ab_other));
+            optionsView.setContentDescription(LocaleController.getString(R.string.AccDescrMoreOptions));
+        }
     }
 }
