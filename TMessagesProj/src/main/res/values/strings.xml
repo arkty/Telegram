@@ -3566,6 +3566,7 @@
     <string name="ActionGroupCallStarted">un1 started a voice chat</string>
     <string name="ActionGroupCallStartedByYou">You started a voice chat</string>
     <string name="ActionGroupCallScheduled">Voice chat scheduled on %1$s</string>
+    <string name="ActionGroupCallSubscribedNotification">You will be notified when the live stream starts.</string>
     <string name="ActionChannelCallJustStarted">Live stream started</string>
     <string name="ActionChannelCallScheduled">Live stream scheduled on %1$s</string>
     <string name="ActionChannelCallEnded">Live stream finished (%s)</string>
@@ -4035,6 +4036,7 @@
     <string name="StartVoipChannel">Start Live stream</string>
     <string name="StartVoipChannelTitle">Live Stream</string>
     <string name="StartVoipChatPermission">Manage Live Streams</string>
+    <string name="VoipChatNotifyMe">Notify Me</string>
     <string name="VoipChatJoin">Join</string>
     <string name="MembersTalking_one">%1$s member talking</string>
     <string name="MembersTalking_other">%1$s members talking</string>

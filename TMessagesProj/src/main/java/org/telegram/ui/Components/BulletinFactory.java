@@ -1334,6 +1334,13 @@ public final class BulletinFactory {
         return create(layout, Bulletin.DURATION_LONG);
     }
 
+    public static Bulletin createLiveStreamSubscribedBulletin(BaseFragment fragment, Theme.ResourcesProvider resourcesProvider) {
+        final Bulletin.LottieLayout layout = new Bulletin.LottieLayout(fragment.getParentActivity(), resourcesProvider);
+        layout.setAnimation(R.raw.voip_notification_enabled);
+        layout.textView.setText(LocaleController.getString(R.string.ActionGroupCallSubscribedNotification));
+
+        return Bulletin.make(fragment, layout, Bulletin.DURATION_SHORT);
+    }
     //endregion
 
     public static class UndoObject {
